@@ -59,11 +59,13 @@ SPI_PROGRAM:
 	//MOV		r2, MCSPI_CH3CTRL
 	//SBBO 	r3, r1, r2, 4
   	
-  	//Config SYS
-  	//TODO: set SPIDATADIR0/1 as input
-  	//MOV		r2, MCSPI_SYST
-  	//MOV  	r3, 0x00000000
-  	//SBBO	r3, r1, r2, 4
+  	//Config SYS: set SSB before clearing IRQSTATUS reg
+  	MOV		r2, MCSPI_SYST
+  	LBBO	r3, r1, r2, 4
+  	MOV		r4, (1 << SPIDATDIR0 | 1 << SSB)
+  	OR		r3, r3, r4
+  	MOV		r4, (~(1 << SPIDATDIR1 | 1 << SPIENDIR))
+  	SBBO	r3, r1, r2, 4
     
     //Config MODULCTRL: No select lines used, single channel mode
     MOV		r2, MCSPI_MODULECTRL
@@ -90,117 +92,79 @@ SPI_PROGRAM:
     
 // 	Do actual tranfer
 ENABLE_CH1:
+	//Set configuration of channel 0 //1 << FFER |1 << FFEW|
+    MOV		r2, MCSPI_CH0CONF 
+    MOV  	r3, (1 << DEP0 | 23 << WL | 10 << CLKD | SPI_MODE_1)
+    MOV		r4, (~(1 << IS | 1 << DEP1 | 1 << TRM0 | 1 << TRM1)) 
+    AND		r3, r3, r4
+    SBBO 	r3, r1, r2, 4
+	
 	// Set Channel0
 	MOV		r2, MCSPI_CH0CTRL
 	LBBO	r3, r1, r2, 4
-	MOV		r4, (~(1<<EXTCLK|1<<EN))
+	MOV		r4, (~(1<<EXTCLK))
 	AND  	r3, r3, r4
+	MOV		r4, (1 << EN)
+	OR 		r3, r3, r4
 	SBBO 	r3, r1, r2, 4
 	
-	//Set configuration of channel 0 //1 << FFER |1 << FFEW|
-    MOV		r2, MCSPI_CH0CONF 
-    MOV  	r3, (1 << DEP0 | 7 << WL | 10 << CLKD | SPI_MODE_1)
-    SBBO 	r3, r1, r2, 4
+	// ENABLE SPIEN
+	MOV		r2, MCSPI_CH0CONF
+    LBBO	r3, r1, r2, 4
+    MOV		r4, (1<<FORCE)
+    OR		r3, r3, r4
+    SBBO	r3, r1, r2, 4
     
-    //MOV		r2, MCSPI_MODULECTRL
-    //LBBO	r3, r1, r2, 4
-    //MOV 	r4, (~(1<<SINGLE_CHANNEL))
-    //AND		r3, r3, r4
-    //SBBO	r3, r1, r2, 4
-        
-    // Enable Channel 0
-	MOV		r2, MCSPI_CH0CTRL
-	LBBO	r3, r1, r2, 4
-	MOV  	r3, (1<<EN)
-	SBBO 	r3, r1, r2, 4
+    // Wait till TX register is empty
+CHECKTX_SET:
+	MOV 	r2, MCSPI_CH0STAT
+	LBBO 	r3, r1, r2, 4
+	QBBS 	CHECKTX_SET, r3.t1
 	
-SET_TRANSFER_COUNT:
-	MOV		r2, MCSPI_XFERLEVEL
-	MOV  	r3, 0x00000004
-	SBBO	r3, r1, r2, 4
-//CHECKTX_CLEAR:
-	//MOV 	r2, MCSPI_CH0STAT
-	//LBBO 	r3, r1, r2, 4
-	//QBBS 	CHECKTX_CLEAR, r3.t1		
-LOAD_DATA0:
-	MOV		r2, MCSPI_TX0
-    MOV	 	r3, 0x0005555
-	SBBO 	r3, r1, r2, 4
-	MOV		r2, MCSPI_CH0CONF
-    LBBO	r3, r1, r2, 4
-    MOV		r4, (1<<FORCE)
-    OR		r3, r3, r4
-    SBBO	r3, r1, r2, 4
-CHECKTX_SET0:
-	MOV 	r2, MCSPI_CH0STAT
-	LBBO 	r3, r1, r2, 4
-	//QBBC 	CHECKTX_SET0, r3.t1
-READ_REPLY0:	
-	MOV		r2, MCSPI_RX0
-	LBBO 	r3, r1, r2, 4
-	SBCO 	r3, CONST_PRUDRAM, 4, 4	
-LOAD_DATA1:
-	MOV		r2, MCSPI_TX0
-    MOV	 	r3, 0x00000015
-	SBBO 	r3, r1, r2, 4
-	MOV		r2, MCSPI_CH0CONF
-    LBBO	r3, r1, r2, 4
-    MOV		r4, (1<<FORCE)
-    OR		r3, r3, r4
-    SBBO	r3, r1, r2, 4
-    // Enable Channel 0
-	MOV		r2, MCSPI_CH0CTRL
+	// Empty RX register
+	MOV 	r2, MCSPI_RX0
 	LBBO	r3, r1, r2, 4
-	MOV  	r3, (1<<EN)
-	SBBO 	r3, r1, r2, 4
-CHECKTX_SET1:
+		
+	// Wait till RX register is empty
+CHECKRX_CLR:
 	MOV 	r2, MCSPI_CH0STAT
 	LBBO 	r3, r1, r2, 4
-	//QBBC 	CHECKTX_SET1, r3.t1
-READ_REPLY1:	
-	MOV		r2, MCSPI_RX0
-	LBBO 	r3, r1, r2, 4
-	SBCO 	r3, CONST_PRUDRAM, 8, 4
-LOAD_DATA2:
-	MOV		r2, MCSPI_TX0
-    MOV	 	r3, 0x00000055
-	SBBO 	r3, r1, r2, 4
-CHECKTX_SET2:
-	MOV 	r2, MCSPI_CH0STAT
-	LBBO 	r3, r1, r2, 4
-	//QBBC 	CHECKTX_SET2, r3.t1
-READ_REPLY2:	
-	MOV		r2, MCSPI_RX0
-	LBBO 	r3, r1, r2, 4
-	SBCO 	r3, CONST_PRUDRAM, 12, 4	
-LOAD_DATA3:
-	MOV		r2, MCSPI_TX0
-    MOV	 	r3, 0x00000155
-	SBBO 	r3, r1, r2, 4
-CHECKTX_SET3:
-	MOV 	r2, MCSPI_CH0STAT
-	LBBO 	r3, r1, r2, 4
-	//QBBC 	CHECKTX_SET3, r3.t1	
-READ_REPLY3:	
-	MOV		r2, MCSPI_RX0
-	LBBO 	r3, r1, r2, 4
-	SBCO 	r3, CONST_PRUDRAM, 16, 4
+	QBBS 	CHECKRX_CLR, r3.t0
 	
-WAIT_US:	
-	MOV		r2, 200
-	MOV		r3, 0
-REPEAT:		
+	// Load data
+	MOV		r2, MCSPI_TX0
+    MOV	 	r3, 0x00A30000
+	SBBO 	r3, r1, r2, 4
+
+CHECK_EOT:
+	MOV 	r2, MCSPI_CH0STAT
+	LBBO 	r3, r1, r2, 4
+	QBBS 	CHECK_EOT, r3.t2	
+
+	// Wait till RX is not empty
+CHECKRX_CLEAR0:
+	MOV 	r2, MCSPI_CH0STAT
+	LBBO 	r3, r1, r2, 4
+	QBBC 	CHECKRX_CLEAR0, r3.t0
+	
+	// Ready reply
+	MOV 	r2, MCSPI_RX0
+	ADD		r2, r2, 3
+	LBBO	r3, r1, r2, 1
+	SBCO	r3, CONST_PRUDRAM, 4, 1
+	
 	SUB		r2, r2, 1
-	QBGT	REPEAT, r2, r3
+	LBBO	r3, r1, r2, 1
+	SBCO	r3, CONST_PRUDRAM, 8, 1
 	
-
-//ENABLE_FIFO:
-	//MOV	 r1, 0x481A0140
-	//LBBO r2, r1, 0, 4
-	//MOV  r3, (1<<27 | 1<<28)
-	//OR 	 r2, r2,r3
-	//SBBO r2, r1, 0, 4  
-
+	SUB		r2, r2, 1
+	LBBO	r3, r1, r2, 1
+	SBCO	r3, CONST_PRUDRAM, 12, 1
+	
+	SUB		r2, r2, 1
+	LBBO	r3, r1, r2, 1
+	SBCO	r3, CONST_PRUDRAM, 16, 1
+	
 EXIT:
   	//Disable channel 1
   	MOV		r2, MCSPI_CH0CTRL

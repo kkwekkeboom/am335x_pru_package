@@ -106,13 +106,27 @@
 #define SIDLEMODE		3
 #define CLOCK_ACTIVITY	8
 
+//MCSPI SYST register
+#define SPIEN0			0
+#define	SPIEN1			1
+#define	SPIEN2			2
+#define	SPIEN3			3
+#define	SPIDAT0			4
+#define	SPIDAT1			5
+#define SPICLK			6
+#define SPIDATDIR0		8
+#define SPIDATDIR1		9
+#define SPIENDIR		10
+#define	SSB				11
+
 //MCSPI CH(i)CFG register definitions
 #define SPI_CPHA		0                    /* clock phase */
 #define SPI_CPOL		1                    /* clock polarity */
 #define CLKD			2
 #define EPOL 			6
 #define WL				7
-#define TRM				12
+#define TRM0			12
+#define	TRM1			13
 #define DMAW			14
 #define DMAR			15
 #define DEP0			16
