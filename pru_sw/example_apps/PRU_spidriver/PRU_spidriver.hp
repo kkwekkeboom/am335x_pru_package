@@ -1,0 +1,37 @@
+/**
+  * @file Spi.hp Spi program definitions
+  * @author C.S. Kwekkeboom
+*/
+
+#ifndef _SPI_HP
+#define _SPI_HP
+
+#define AM33XX
+
+// ***************************************
+// *      Global Macro definitions       *
+// ***************************************
+
+#define PRU0_ARM_INTERRUPT      19
+#define PRU1_ARM_INTERRUPT      20
+
+#define CONST_PRUCFG    C4
+#define CONST_PRUDRAM   C24
+#define CONST_PRUSHAREDRAM   C28
+#define CONST_L3RAM     C30
+#define CONST_DDR            C31
+
+#define SYSCFG_OFFSET 4
+
+// Address for the Constant table Programmable Pointer Register 0(CTPPR_0)
+#define CTBIR_0         0x22020
+// Address for the Constant table Programmable Pointer Register 0(CTPPR_0)
+#define CTBIR_1         0x22024
+
+// Address for the Constant table Programmable Pointer Register 0(CTPPR_0)
+#define CTPPR_0         0x22028
+
+// Address for the Constant table Programmable Pointer Register 1(CTPPR_1)
+#define CTPPR_1         0x2202C
+
+#endif // _SPI_HP
