@@ -32,6 +32,7 @@
 				0x58 0x17	/* gpmc_a6.gpio1_22, OUTPUT_PULLUP | MODE7 */
 				0x5c 0x7	/* gpmc_a7.gpio1_23, OUTPUT | MODE7 */
 				0x60 0x17	/* gpmc_a8.gpio1_24, OUTPUT_PULLUP | MODE7 */
+				0x1a4 0x15	/* pr1_pru0_pru_r31_5 OUTPUT_PULLUP | MODE5 */
 			>;
 		};
 		i2c0_pins: pinmux_i2c0_pins {
