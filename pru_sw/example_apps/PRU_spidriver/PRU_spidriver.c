@@ -26,16 +26,7 @@
 #define BACKPLANE_SEL4 "/sys/class/gpio/gpio68/value"
 #define RESET_PIN "/sys/class/gpio/gpio86/value"
 #define NR_SELECT_LINES 9
-
-#define SPI_MODE_1 		(1<<1)
-#define CLK_0			((0<<2) | (0<<3) | (0<<4) | (0<<5))
-#define EPOL 			(1<<6)
-#define WL8				(7<<7)
-#define TRM_TX_RX		(0<<12)
-#define NO_DMA			(0<<14 | 0 << 15)
-#define DATA_LINES		(9<<16)
-#define FORCE			(1<<20)
-#define MCSPI_CH1CFG	(SPI_MODE_1 | CLK_0 | EPOL | WL8 | TRM_TX_RX | NO_DMA | DATA_LINES | FORCE)
+#define MAX_REPLY_SIZE 256
 
 /******************************************************************************
 * Local Function Declarations                                                 *
@@ -51,7 +42,8 @@ void setPin(int fd, int value);
 ******************************************************************************/
 
 static void *pruDataMem;
-static unsigned int *pruDataMem_int;
+static unsigned int *requests;
+static unsigned char *responses;
 static unsigned int pins[NR_SELECT_LINES];
 
 /*****************************************************************************
@@ -65,7 +57,7 @@ static unsigned int pins[NR_SELECT_LINES];
 ******************************************************************************/
 int main (int argc, char* argv[])
 {
-	int ret;
+	int ret, iter;
 	tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
 	prussdrv_init();
 
@@ -77,16 +69,14 @@ int main (int argc, char* argv[])
 	}
 	prussdrv_pruintc_init(&pruss_intc_initdata);
 	LOCAL_exampleInit();
-	prussdrv_exec_program (PRU_NUM, "./PRU_spidriver.bin");
-	prussdrv_pru_wait_event (PRU_EVTOUT_0); //wait for halt
-	prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-	if ( LOCAL_examplePassed(PRU_NUM) )
+	for (iter = 0; iter < 10; iter++)
 	{
-		printf("Example executed succesfully.\r\n");
-	}
-	else
-	{
-		printf("Example failed.\r\n");
+		prussdrv_exec_program (PRU_NUM, "./PRU_spidriver.bin");
+		//prussdrv_pru_send_event ( 32 );
+		prussdrv_pru_send_wait_clear_event  ( 32, PRU_EVTOUT_0, 32);
+		prussdrv_pru_wait_event (PRU_EVTOUT_0); //wait for halt
+		prussdrv_pru_clear_event (PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+		LOCAL_examplePassed(PRU_NUM);
 	}
 	prussdrv_pru_disable(PRU_NUM);
 	prussdrv_exit();
@@ -98,46 +88,59 @@ int main (int argc, char* argv[])
 
 static int LOCAL_exampleInit (  )
 {
-	int n = 0, i,k;
+	int n = 0, i, j;
 	 //Initialize pointer to PRU data memory
 	prussdrv_map_prumem (PRUSS0_PRU0_DATARAM, &pruDataMem);
 
-	pruDataMem_int = (unsigned int*) pruDataMem;
-
+	requests = (unsigned int*) pruDataMem;
+	printf("reqs address %x\n", requests);
+	responses = (unsigned char*) (requests + 16); //responses array starts after requests 0-15
+	printf("responses address %x\n", responses);
 	// Flush the values in the PRU data memory locations
-	pruDataMem_int[0] = 0x40;
-	pruDataMem_int[1] = 0x00;
-	pins[n++] = open(RESET_PIN, O_WRONLY);
-	pins[n++] = open(SLAVE_SEL1, O_WRONLY);
-	pins[n++] = open(SLAVE_SEL2, O_WRONLY);
-	pins[n++] = open(SLAVE_SEL3, O_WRONLY);
-	pins[n++] = open(SLAVE_SEL4, O_WRONLY);
-	pins[n++] = open(BACKPLANE_SEL1, O_WRONLY);
-	pins[n++] = open(BACKPLANE_SEL2, O_WRONLY);
-	pins[n++] = open(BACKPLANE_SEL3, O_WRONLY);
-	pins[n++] = open(BACKPLANE_SEL4, O_WRONLY);
-	setPin(pins[0], 1); //reset modules
-	k = MCSPI_CH1CFG;
-	printf("here %x\n", MCSPI_CH1CFG);
-	usleep(1000);
-	/*for (i= 0; i < 16; i++)
+	for (i = 0; i < 16; i++)
+		requests[i] = 0x0000000;
+	requests[1] = 64;
+	requests[2] = 80;
+	for (i = 0; i < 16; i++)
 	{
-		selectIOModule(i);
-		usleep(500000);
-	}*/
-	selectIOModule(1);
+		for (j = 0; j < MAX_REPLY_SIZE; j++)
+		{
+			responses[i * MAX_REPLY_SIZE + j] = 0x00;
+		}
+	}
+	pins[n++] = open(RESET_PIN, O_WRONLY);
+	//pins[n++] = open(SLAVE_SEL1, O_WRONLY);
+	//pins[n++] = open(SLAVE_SEL2, O_WRONLY);
+	//pins[n++] = open(SLAVE_SEL3, O_WRONLY);
+	//pins[n++] = open(SLAVE_SEL4, O_WRONLY);
+	//pins[n++] = open(BACKPLANE_SEL1, O_WRONLY);
+	//pins[n++] = open(BACKPLANE_SEL2, O_WRONLY);
+	//pins[n++] = open(BACKPLANE_SEL3, O_WRONLY);
+	//pins[n++] = open(BACKPLANE_SEL4, O_WRONLY);
+	setPin(pins[0], 1); //reset modules
+	usleep(1000);
+	setPin(pins[0], 0); //reset modules
+	usleep(100000);
+	//selectIOModule(2);
 	return(0);
 }
 
 static unsigned short LOCAL_examplePassed ( unsigned short pruNum )
 {
-	int i;
-	for (i = 0; i < 5; i++)
+	int i, j;
+	for (i = 0; i < 16; i++)
 	{
-		printf("[%d]", pruDataMem_int[i]);
+		printf("module %d [%d]", i, responses[i * MAX_REPLY_SIZE]);
+		if (responses[i * MAX_REPLY_SIZE] == 0x23)
+		{
+			printf("[%d]", responses[i * MAX_REPLY_SIZE + 1]);
+			for (j = 2; j < responses[i * MAX_REPLY_SIZE + 1]; j++)
+			{
+				printf("[%d]", responses[i * MAX_REPLY_SIZE + j]);
+			}
+		}
+		printf("\n");
 	}
-	printf("\n");
-
 	//{
 //		printf("result%d=%d",i,pruDataMem_int[i]);
 	//}
