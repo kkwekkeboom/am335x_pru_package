@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#Load Device Tree Overlay to Enable PRU
+
+echo "BB-BONE-PRU-01" > /sys/devices/bone_capemgr.*/slots
+
+#Load Device Tree Overlay to Enable SPI
+
+echo "BB-SPIDEV9" > /sys/devices/bone_capemgr.*/slots
+
