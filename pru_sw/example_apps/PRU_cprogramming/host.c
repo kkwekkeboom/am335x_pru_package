@@ -50,17 +50,15 @@ void exit_handler(int signal);
 
 int main(int argc, const char *argv[])
 {
-	int i, iterations = 4,ret;
+	int i, iterations = 0,ret;
    // Listen to SIGINT signals (program termination)
    signal(SIGINT, exit_handler);
    // Load and run binary into pru0
    init_pru_program();
-   //ret = HWREG(0x4a32200C);
-   //printf("counter %x\n", ret);
+   printf("initialized program\n");
    prussdrv_pru_wait_event(PRU_EVTOUT_0);
    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-   prussdrv_read_program(PRU_NUM, "./text_exec.bin");
-   printf("here2\n");
+   printf("pru ready\n");
    while(iterations)
    {
       // Initialize spi program request
@@ -68,17 +66,18 @@ int main(int argc, const char *argv[])
 
       // Send interrupt to PRU to execute request
       prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
-      printf("here3\n");
+      printf("send request to PRU\n");
 
       // Wait for PRU to finish executing request
       prussdrv_pru_wait_event(PRU_EVTOUT_0);
       prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-      printf("here4\n");
+      printf("pru completed transfer\n");
       for (i = 0; i < MODULES_MAX; i++)
       {
     	  printf("%d\n", requests[i]);
       }
       iterations--;
+      usleep(10);
    }
 
    printf("Disabling PRU.\n");
@@ -92,17 +91,11 @@ void init_pru_program()
 {
 	int ret;
 	tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
-	//prussdrv_pru_disable(PRU_NUM);
 	ret =prussdrv_init();
-	printf("ret1%d\n", ret);
 	ret =prussdrv_open(PRU_EVTOUT_0);
-	printf("ret2%d\n", ret);
-	ret =prussdrv_pruintc_init(&pruss_intc_initdata);
-	printf("ret3%d\n", ret);
-	ret =prussdrv_load_datafile(PRU_NUM, "./data.bin");
-	printf("ret4%d\n", ret);
-	ret =prussdrv_exec_program_at(PRU_NUM, "./text.bin", START_ADDR);
-	printf("ret5%d\n", ret);
+	//ret =prussdrv_pruintc_init(&pruss_intc_initdata);
+	//ret =prussdrv_load_datafile(PRU_NUM, "./data.bin");
+	//ret =prussdrv_exec_program_at(PRU_NUM, "./text.bin", START_ADDR);
 }
 
 void init_spi_request()

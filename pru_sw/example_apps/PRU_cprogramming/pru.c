@@ -64,9 +64,8 @@ int main(int argc, const char *argv[]){
 	__R30 &= ~DEBUG_PIN;
 	while(i--);
 	__R30 |= DEBUG_PIN;
-
-
 	createARMInterrupt();
+
 
 	while(1){
 		//count ++;
@@ -75,14 +74,15 @@ int main(int argc, const char *argv[]){
 		// ISRs do not exist for the PRU (design choice)
 		if(getARMInterrupt())
 		{
-			//__R30 |= DEBUG_PIN;
+			__R30 &= ~DEBUG_PIN;
 			clearInterrupt();
-			for (i = 0; i < 100; i++)
-						i = i + 0;
-			for (i = 0; i < MODULES_MAX; i++)
-				selectModule(1);
+			i =600;
+			while(i--);
+			//for (i = 0; i < MODULES_MAX; i++)
+				//selectModule(1);
+			__R30 |= ~DEBUG_PIN;
 			createARMInterrupt();
-			//__R30 &= ~DEBUG_PIN;
+
 		}
 	}
 	// stop pru processing
@@ -93,8 +93,7 @@ int main(int argc, const char *argv[]){
 
 inline int getARMInterrupt()
 {
-	//return (__R31 & (1 << 30));
-	return 1;
+	return (__R31 & (1 << 30));
 }
 
 
